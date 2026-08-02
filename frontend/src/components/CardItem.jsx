@@ -30,7 +30,10 @@ export const CardItem = ({ card, index, onClick, onDragStart, onDragOverCard, on
             draggable
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
-            onDragOver={(e) => onDragOverCard && onDragOverCard(e, index)}
+            onDragOver={(e) => {
+                e.preventDefault();
+                if (onDragOverCard) onDragOverCard(e, index);
+            }}
             onDrop={(e) => onDropOnCard && onDropOnCard(e, index)}
             onClick={() => onClick(card)}
         >

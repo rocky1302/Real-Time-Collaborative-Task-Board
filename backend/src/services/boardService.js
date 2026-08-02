@@ -38,39 +38,25 @@ export class BoardService {
         const members = await BoardRepository.getMembers(boardId);
         let lists = await ListRepository.getListsByBoard(boardId);
 
-        // Standard 4 columns matching Photo 2 reference: To Do, In Progress, Review, Done
+        // Standard 4 columns matching Photo 2 reference: To Do (0), In Progress (1), Review (2), Done (3)
         const standardTitles = ['To Do', 'In Progress', 'Review', 'Done'];
 
-        if (lists.length === 0) {
-            for (let i = 0; i < standardTitles.length; i++) {
-                await ListRepository.create({ boardId, title: standardTitles[i], position: i });
+        for (let i = 0; i < standardTitles.length; i++) {
+            const targetTitle = standardTitles[i];
+            const found = lists.find(
+                (l) => l.title.trim().toLowerCase() === targetTitle.toLowerCase() ||
+                       (targetTitle === 'Review' && l.title.trim().toLowerCase().includes('review')) ||
+                       (targetTitle === 'To Do' && (l.title.trim().toLowerCase().includes('todo') || l.title.trim().toLowerCase().includes('backlog')))
+            );
+
+            if (found) {
+                await ListRepository.update(found.id, { title: targetTitle, position: i });
+            } else {
+                await ListRepository.create({ boardId, title: targetTitle, position: i });
             }
-            lists = await ListRepository.getListsByBoard(boardId);
-        } else if (lists.length === 4) {
-            for (let i = 0; i < 4; i++) {
-                if (lists[i].title !== standardTitles[i]) {
-                    await ListRepository.update(lists[i].id, { title: standardTitles[i], position: i });
-                    lists[i].title = standardTitles[i];
-                }
-            }
-        } else {
-            const existingNormalized = lists.map((l) => l.title.replace(/[^\w\s]/gi, '').trim().toLowerCase());
-            for (let i = 0; i < standardTitles.length; i++) {
-                const stdNorm = standardTitles[i].toLowerCase();
-                const foundIndex = existingNormalized.findIndex(
-                    (t) => t.includes(stdNorm) || (stdNorm === 'review' && t.includes('review')) || (stdNorm === 'to do' && (t.includes('todo') || t.includes('backlog')))
-                );
-                if (foundIndex !== -1) {
-                    if (lists[foundIndex].title !== standardTitles[i]) {
-                        await ListRepository.update(lists[foundIndex].id, { title: standardTitles[i] });
-                        lists[foundIndex].title = standardTitles[i];
-                    }
-                } else {
-                    await ListRepository.create({ boardId, title: standardTitles[i], position: lists.length + i });
-                }
-            }
-            lists = await ListRepository.getListsByBoard(boardId);
         }
+
+        lists = await ListRepository.getListsByBoard(boardId);
 
         // Populate cards for each list
         const listsWithCards = await Promise.all(
