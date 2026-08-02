@@ -281,13 +281,9 @@ export const BoardPage = ({ boardId, onBack, onSetBoardTitle }) => {
         }
     };
 
-    if (loading || !board) {
-        return <div style={{ textAlign: 'center', padding: '3rem' }}>Loading board workspace...</div>;
-    }
-
-    const totalTasks = board.lists.reduce((acc, list) => {
+    const totalTasks = board && board.lists ? board.lists.reduce((acc, list) => {
         return acc + (list.cards ? list.cards.filter((c) => !c.is_archived).length : 0);
-    }, 0);
+    }, 0) : 0;
 
     return (
         <div className="board-page">
@@ -296,59 +292,80 @@ export const BoardPage = ({ boardId, onBack, onSetBoardTitle }) => {
                     <button className="btn btn-secondary btn-sm" onClick={onBack}>
                         ← Back to dashboard
                     </button>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ fontSize: '1.2rem' }}>📋</span>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{board.title}</h2>
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', cursor: 'pointer' }}>•••</span>
-                    </div>
-                    <span className="count-badge" style={{ fontSize: '0.82rem', padding: '0.25rem 0.65rem' }}>
-                        Total Tasks: {totalTasks}
-                    </span>
+                    {board && (
+                        <>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span style={{ fontSize: '1.2rem' }}>📋</span>
+                                <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{board.title}</h2>
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', cursor: 'pointer' }}>•••</span>
+                            </div>
+                            <span className="count-badge" style={{ fontSize: '0.82rem', padding: '0.25rem 0.65rem' }}>
+                                Total Tasks: {totalTasks}
+                            </span>
+                        </>
+                    )}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <input
-                        type="text"
-                        className="form-input"
-                        style={{ width: '180px', padding: '0.4rem 0.75rem' }}
-                        placeholder="🔍 Search tasks..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+                {board && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <input
+                            type="text"
+                            className="form-input"
+                            style={{ width: '180px', padding: '0.4rem 0.75rem' }}
+                            placeholder="🔍 Search tasks..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
 
-                    <button
-                        className={`btn btn-sm ${showArchived ? 'btn-primary' : 'btn-secondary'}`}
-                        onClick={() => setShowArchived(!showArchived)}
-                    >
-                        {showArchived ? 'Hide Archived' : 'Show Archived'}
-                    </button>
+                        <button
+                            className={`btn btn-sm ${showArchived ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={() => setShowArchived(!showArchived)}
+                        >
+                            {showArchived ? 'Hide Archived' : 'Show Archived'}
+                        </button>
 
-                    <button className="btn btn-secondary btn-sm" onClick={() => setIsAddMemberOpen(true)}>
-                        👥 Members ({board.members ? board.members.length : 1})
-                    </button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => setIsAddMemberOpen(true)}>
+                            👥 Members ({board.members ? board.members.length : 1})
+                        </button>
 
-                    <button className="btn btn-secondary btn-sm" onClick={() => setIsActivityOpen(true)}>
-                        📜 Activity
-                    </button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => setIsActivityOpen(true)}>
+                            📜 Activity
+                        </button>
 
-                    <button
-                        className="btn btn-primary btn-sm"
-                        onClick={() => {
-                            if (board.lists.length > 0) {
-                                const firstList = board.lists[0];
-                                const taskTitle = prompt('Enter new task title for ' + firstList.title + ':');
-                                if (taskTitle && taskTitle.trim()) {
-                                    handleAddCard(firstList.id, taskTitle.trim());
+                        <button
+                            className="btn btn-primary btn-sm"
+                            onClick={() => {
+                                if (board.lists.length > 0) {
+                                    const firstList = board.lists[0];
+                                    const taskTitle = prompt('Enter new task title for ' + firstList.title + ':');
+                                    if (taskTitle && taskTitle.trim()) {
+                                        handleAddCard(firstList.id, taskTitle.trim());
+                                    }
                                 }
-                            }
-                        }}
-                    >
-                        + Add Task
-                    </button>
-                </div>
+                            }}
+                        >
+                            + Add Task
+                        </button>
+                    </div>
+                )}
             </div>
 
-            <div className="kanban-canvas">
+            {loading ? (
+                <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-secondary)' }}>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '0.5rem' }}>Loading board workspace...</div>
+                    <div style={{ fontSize: '0.9rem' }}>Fetching lists and tasks...</div>
+                </div>
+            ) : !board ? (
+                <div style={{ textAlign: 'center', padding: '4rem' }}>
+                    <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--text-secondary)' }}>
+                        Unable to load board workspace.
+                    </h3>
+                    <button className="btn btn-primary" onClick={onBack}>
+                        ← Return to Dashboard
+                    </button>
+                </div>
+            ) : (
+                <div className="kanban-canvas">
                 {board.lists.map((list) => {
                     const filteredCards = list.cards.filter((card) => {
                         const matchesArchive = showArchived ? true : !card.is_archived;
@@ -406,6 +423,7 @@ export const BoardPage = ({ boardId, onBack, onSetBoardTitle }) => {
                     </button>
                 )}
             </div>
+            )}
 
             {selectedCard && (
                 <CardModal
