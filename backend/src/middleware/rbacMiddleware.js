@@ -12,20 +12,29 @@ export const requireBoardRole = (minRole = 'viewer') => {
         try {
             const userId = req.user.id;
             // Infer boardId from req.params.boardId or req.params.id or req.body.boardId
-            let boardId = req.params.boardId || req.params.id || req.body.boardId;
+            let boardId = req.params.boardId || req.body.boardId;
+            const targetListId = req.params.listId || req.body.listId;
 
             // If request is for a list or card, resolve its parent boardId
-            if (!boardId && req.params.listId) {
-                const listRes = await query('SELECT board_id FROM lists WHERE id = $1', [req.params.listId]);
+            if (!boardId && targetListId) {
+                const listRes = await query('SELECT board_id FROM lists WHERE id = $1', [targetListId]);
                 if (listRes.rows.length === 0) throw new NotFoundError('List not found');
                 boardId = listRes.rows[0].board_id;
-            } else if (!boardId && req.params.cardId) {
-                const cardRes = await query(
-                    'SELECT l.board_id FROM cards c JOIN lists l ON c.list_id = l.id WHERE c.id = $1',
-                    [req.params.cardId]
-                );
-                if (cardRes.rows.length === 0) throw new NotFoundError('Card not found');
-                boardId = cardRes.rows[0].board_id;
+            } else if (!boardId && (req.params.cardId || req.params.id)) {
+                const targetCardId = req.params.cardId || req.params.id;
+                // Check if req.params.id is directly a board ID or a card ID
+                const boardRes = await query('SELECT id FROM boards WHERE id = $1', [targetCardId]);
+                if (boardRes.rows.length > 0) {
+                    boardId = boardRes.rows[0].id;
+                } else {
+                    const cardRes = await query(
+                        'SELECT l.board_id FROM cards c JOIN lists l ON c.list_id = l.id WHERE c.id = $1',
+                        [targetCardId]
+                    );
+                    if (cardRes.rows.length > 0) {
+                        boardId = cardRes.rows[0].board_id;
+                    }
+                }
             }
 
             if (!boardId) {
