@@ -9,10 +9,10 @@ export class BoardService {
     static async createBoard({ title, description, ownerId }) {
         const board = await BoardRepository.create({ title, description, ownerId });
         
-        // Seed 4 default lists for new board: To Do, In Progress, In Review, Done
+        // Seed 4 default lists for new board: To Do, In Progress, Review, Done
         await ListRepository.create({ boardId: board.id, title: 'To Do', position: 0 });
         await ListRepository.create({ boardId: board.id, title: 'In Progress', position: 1 });
-        await ListRepository.create({ boardId: board.id, title: 'In Review', position: 2 });
+        await ListRepository.create({ boardId: board.id, title: 'Review', position: 2 });
         await ListRepository.create({ boardId: board.id, title: 'Done', position: 3 });
 
         await ActivityLogRepository.log({
@@ -38,13 +38,14 @@ export class BoardService {
         const members = await BoardRepository.getMembers(boardId);
         let lists = await ListRepository.getListsByBoard(boardId);
 
-        // Auto-ensure default 4 lists exist even for existing boards
-        const requiredLists = ['To Do', 'In Progress', 'In Review', 'Done'];
+        // Auto-ensure default 4 lists exist even for existing boards (matching Photo 2: To Do, In Progress, Review, Done)
+        const requiredLists = ['To Do', 'In Progress', 'Review', 'Done'];
         const existingTitles = lists.map((l) => l.title.trim().toLowerCase());
 
         for (let i = 0; i < requiredLists.length; i++) {
             const reqTitle = requiredLists[i];
-            if (!existingTitles.includes(reqTitle.toLowerCase())) {
+            const hasMatch = existingTitles.some((t) => t === reqTitle.toLowerCase() || (reqTitle === 'Review' && t === 'in review'));
+            if (!hasMatch) {
                 await ListRepository.create({ boardId, title: reqTitle, position: lists.length + i });
             }
         }
