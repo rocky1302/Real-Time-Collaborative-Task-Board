@@ -191,7 +191,14 @@ export const BoardPage = ({ boardId, onBack, onSetBoardTitle }) => {
     };
 
     const handleDragStartCard = (e, card) => {
-        e.dataTransfer.setData('application/json', JSON.stringify(card));
+        window.__draggedCard = card;
+        try {
+            e.dataTransfer.setData('application/json', JSON.stringify(card));
+            e.dataTransfer.setData('text/plain', JSON.stringify(card));
+            e.dataTransfer.effectAllowed = 'move';
+        } catch (err) {
+            console.error('DragStart setData error:', err);
+        }
     };
 
     if (loading || !board) {

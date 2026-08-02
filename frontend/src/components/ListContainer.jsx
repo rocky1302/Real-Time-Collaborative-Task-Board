@@ -38,15 +38,23 @@ export const ListContainer = ({
         e.stopPropagation();
         setIsDragOver(false);
 
-        const cardData = e.dataTransfer.getData('application/json');
-        if (!cardData) return;
+        let card = window.__draggedCard;
 
-        try {
-            const card = JSON.parse(cardData);
+        if (!card) {
+            try {
+                const cardData = e.dataTransfer.getData('application/json') || e.dataTransfer.getData('text/plain');
+                if (cardData) {
+                    card = JSON.parse(cardData);
+                }
+            } catch (err) {
+                console.error('Failed to parse dropped card data:', err);
+            }
+        }
+
+        if (card) {
             const newPos = targetIndex !== null ? targetIndex : cards.length;
             onMoveCard(card.id, list.id, newPos);
-        } catch (err) {
-            console.error('Failed to parse dropped card data:', err);
+            window.__draggedCard = null;
         }
     };
 

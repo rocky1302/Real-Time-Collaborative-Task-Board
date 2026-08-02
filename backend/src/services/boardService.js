@@ -36,7 +36,20 @@ export class BoardService {
         }
 
         const members = await BoardRepository.getMembers(boardId);
-        const lists = await ListRepository.getListsByBoard(boardId);
+        let lists = await ListRepository.getListsByBoard(boardId);
+
+        // Auto-ensure default 4 lists exist even for existing boards
+        const requiredLists = ['To Do', 'In Progress', 'In Review', 'Done'];
+        const existingTitles = lists.map((l) => l.title.trim().toLowerCase());
+
+        for (let i = 0; i < requiredLists.length; i++) {
+            const reqTitle = requiredLists[i];
+            if (!existingTitles.includes(reqTitle.toLowerCase())) {
+                await ListRepository.create({ boardId, title: reqTitle, position: lists.length + i });
+            }
+        }
+
+        lists = await ListRepository.getListsByBoard(boardId);
 
         // Populate cards for each list
         const listsWithCards = await Promise.all(
