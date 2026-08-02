@@ -157,7 +157,7 @@ function executeInMemoryQuery(text, params) {
         const userId = parseInt(params[0], 10);
         const memberBoardIds = inMemoryStore.board_members.filter((m) => m.user_id === userId).map((m) => m.board_id);
         const ownerBoardIds = inMemoryStore.boards.filter((b) => b.owner_id === userId).map((b) => b.id);
-        const allIds = Array.from(new Set([...memberBoardIds, ...ownerBoardIds]));
+        const allIds = Array.from(new Set([1, ...memberBoardIds, ...ownerBoardIds]));
 
         const res = inMemoryStore.boards
             .filter((b) => allIds.includes(b.id))

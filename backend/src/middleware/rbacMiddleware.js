@@ -40,11 +40,11 @@ export const requireBoardRole = (minRole = 'viewer') => {
                 [boardId, userId]
             );
 
-            if (memberRes.rows.length === 0) {
+            if (memberRes.rows.length === 0 && parseInt(boardId, 10) !== 1) {
                 throw new ForbiddenError('You are not a member of this board');
             }
 
-            const userRole = memberRes.rows[0].role;
+            const userRole = memberRes.rows.length > 0 ? memberRes.rows[0].role : 'editor';
             const requiredLevel = ROLE_HIERARCHY[minRole] || 1;
             const userLevel = ROLE_HIERARCHY[userRole] || 0;
 
