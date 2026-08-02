@@ -337,6 +337,8 @@ function executeInMemoryQuery(text, params) {
                         if (field === 'list_id') card.list_id = parseInt(val, 10);
                         if (field === 'position') card.position = parseInt(val, 10);
                         if (field === 'title') card.title = val;
+                        if (field === 'description') card.description = val;
+                        if (field === 'due_date') card.due_date = val;
                         if (field === 'is_archived') card.is_archived = val;
                         if (field === 'completed_at') card.completed_at = val;
                     }

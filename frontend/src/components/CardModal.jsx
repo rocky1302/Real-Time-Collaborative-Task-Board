@@ -27,6 +27,7 @@ export const CardModal = ({ isOpen, card, currentUserId, onClose, onUpdateCard, 
             dueDate: dueDate ? new Date(dueDate).toISOString() : null,
             labelIds: selectedLabels,
         });
+        onClose();
     };
 
     const toggleLabel = (labelId) => {
