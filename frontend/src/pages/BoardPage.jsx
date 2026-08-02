@@ -190,6 +190,93 @@ export const BoardPage = ({ boardId, onBack, onSetBoardTitle }) => {
         }
     };
 
+    const handleUpdateCard = async (cardId, updates) => {
+        try {
+            const res = await apiFetch(`/cards/${cardId}`, {
+                method: 'PUT',
+                body: JSON.stringify(updates),
+            });
+
+            const updatedCard = res.data;
+            setBoard((prev) => ({
+                ...prev,
+                lists: prev.lists.map((list) => ({
+                    ...list,
+                    cards: list.cards.map((c) => (c.id === cardId ? { ...c, ...updatedCard } : c)),
+                })),
+            }));
+            setSelectedCard((prev) => (prev && prev.id === cardId ? { ...prev, ...updatedCard } : prev));
+
+            if (socket) {
+                socket.emit('card:update', { boardId, card: updatedCard });
+            }
+        } catch (err) {
+            alert(err.message || 'Failed to update card');
+        }
+    };
+
+    const handleArchiveCard = async (cardId, shouldArchive) => {
+        try {
+            const endpoint = shouldArchive ? `/cards/${cardId}/archive` : `/cards/${cardId}/restore`;
+            const res = await apiFetch(endpoint, { method: 'PUT' });
+            const updatedCard = res.data;
+
+            setBoard((prev) => ({
+                ...prev,
+                lists: prev.lists.map((list) => ({
+                    ...list,
+                    cards: list.cards.map((c) => (c.id === cardId ? { ...c, ...updatedCard } : c)),
+                })),
+            }));
+            setSelectedCard(null);
+
+            if (socket) {
+                socket.emit('card:update', { boardId, card: updatedCard });
+            }
+        } catch (err) {
+            alert(err.message || 'Failed to archive/restore card');
+        }
+    };
+
+    const handleDeleteCardPermanently = async (cardId) => {
+        if (!window.confirm('Permanently delete this card? This cannot be undone.')) return;
+        try {
+            await apiFetch(`/cards/${cardId}`, { method: 'DELETE' });
+
+            setBoard((prev) => ({
+                ...prev,
+                lists: prev.lists.map((list) => ({
+                    ...list,
+                    cards: list.cards.filter((c) => c.id !== cardId),
+                })),
+            }));
+            setSelectedCard(null);
+
+            if (socket) {
+                socket.emit('card:delete', { boardId, cardId });
+            }
+        } catch (err) {
+            alert(err.message || 'Failed to delete card');
+        }
+    };
+
+    const handleAddMember = async (e) => {
+        e.preventDefault();
+        if (!memberEmail.trim()) return;
+        try {
+            await apiFetch(`/boards/${boardId}/members`, {
+                method: 'POST',
+                body: JSON.stringify({ email: memberEmail.trim(), role: memberRole }),
+            });
+            setMemberEmail('');
+            setMemberRole('editor');
+            setIsAddMemberOpen(false);
+            fetchBoardDetails();
+        } catch (err) {
+            alert(err.message || 'Failed to add member');
+        }
+    };
+
     const handleDragStartCard = (e, card) => {
         window.__draggedCard = card;
         try {
