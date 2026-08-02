@@ -123,10 +123,10 @@ async function seed() {
 
         // 4. Create Lists
         const listsData = [
-            { title: '📋 Backlog', position: 0 },
-            { title: '🏗️ In Progress', position: 1 },
-            { title: '🔍 Code Review', position: 2 },
-            { title: '✅ Done', position: 3 },
+            { title: 'To Do', position: 0 },
+            { title: 'In Progress', position: 1 },
+            { title: 'Review', position: 2 },
+            { title: 'Done', position: 3 },
         ];
 
         const createdLists = [];

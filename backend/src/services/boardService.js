@@ -38,19 +38,39 @@ export class BoardService {
         const members = await BoardRepository.getMembers(boardId);
         let lists = await ListRepository.getListsByBoard(boardId);
 
-        // Auto-ensure default 4 lists exist even for existing boards (matching Photo 2: To Do, In Progress, Review, Done)
-        const requiredLists = ['To Do', 'In Progress', 'Review', 'Done'];
-        const existingTitles = lists.map((l) => l.title.trim().toLowerCase());
+        // Standard 4 columns matching Photo 2 reference: To Do, In Progress, Review, Done
+        const standardTitles = ['To Do', 'In Progress', 'Review', 'Done'];
 
-        for (let i = 0; i < requiredLists.length; i++) {
-            const reqTitle = requiredLists[i];
-            const hasMatch = existingTitles.some((t) => t === reqTitle.toLowerCase() || (reqTitle === 'Review' && t === 'in review'));
-            if (!hasMatch) {
-                await ListRepository.create({ boardId, title: reqTitle, position: lists.length + i });
+        if (lists.length === 0) {
+            for (let i = 0; i < standardTitles.length; i++) {
+                await ListRepository.create({ boardId, title: standardTitles[i], position: i });
             }
+            lists = await ListRepository.getListsByBoard(boardId);
+        } else if (lists.length === 4) {
+            for (let i = 0; i < 4; i++) {
+                if (lists[i].title !== standardTitles[i]) {
+                    await ListRepository.update(lists[i].id, { title: standardTitles[i], position: i });
+                    lists[i].title = standardTitles[i];
+                }
+            }
+        } else {
+            const existingNormalized = lists.map((l) => l.title.replace(/[^\w\s]/gi, '').trim().toLowerCase());
+            for (let i = 0; i < standardTitles.length; i++) {
+                const stdNorm = standardTitles[i].toLowerCase();
+                const foundIndex = existingNormalized.findIndex(
+                    (t) => t.includes(stdNorm) || (stdNorm === 'review' && t.includes('review')) || (stdNorm === 'to do' && (t.includes('todo') || t.includes('backlog')))
+                );
+                if (foundIndex !== -1) {
+                    if (lists[foundIndex].title !== standardTitles[i]) {
+                        await ListRepository.update(lists[foundIndex].id, { title: standardTitles[i] });
+                        lists[foundIndex].title = standardTitles[i];
+                    }
+                } else {
+                    await ListRepository.create({ boardId, title: standardTitles[i], position: lists.length + i });
+                }
+            }
+            lists = await ListRepository.getListsByBoard(boardId);
         }
-
-        lists = await ListRepository.getListsByBoard(boardId);
 
         // Populate cards for each list
         const listsWithCards = await Promise.all(
