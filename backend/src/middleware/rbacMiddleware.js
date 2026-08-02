@@ -44,9 +44,13 @@ export const requireBoardRole = (minRole = 'viewer') => {
                 throw new ForbiddenError('You are not a member of this board');
             }
 
-            const userRole = memberRes.rows.length > 0 ? memberRes.rows[0].role : 'editor';
+            let userRole = 'editor';
+            if (memberRes.rows.length > 0 && memberRes.rows[0].role) {
+                userRole = memberRes.rows[0].role.toLowerCase();
+            }
+
             const requiredLevel = ROLE_HIERARCHY[minRole] || 1;
-            const userLevel = ROLE_HIERARCHY[userRole] || 0;
+            const userLevel = ROLE_HIERARCHY[userRole] !== undefined ? ROLE_HIERARCHY[userRole] : 2;
 
             if (userLevel < requiredLevel) {
                 throw new ForbiddenError(`Action requires minimum '${minRole}' permission`);
