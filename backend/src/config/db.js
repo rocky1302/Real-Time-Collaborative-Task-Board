@@ -287,12 +287,15 @@ function executeInMemoryQuery(text, params) {
 
     if (lower.includes('from cards') && lower.includes('where c.list_id =')) {
         const listId = parseInt(params[0], 10);
-        const cards = inMemoryStore.cards.filter((c) => c.list_id === listId && !c.is_archived).map((c) => {
-            const labelIds = inMemoryStore.card_labels.filter((cl) => cl.card_id === c.id).map((cl) => cl.label_id);
-            const labels = inMemoryStore.labels.filter((lbl) => labelIds.includes(lbl.id));
-            const comments = inMemoryStore.comments.filter((cmt) => cmt.card_id === c.id);
-            return { ...c, labels, comment_count: comments.length };
-        });
+        const cards = inMemoryStore.cards
+            .filter((c) => c.list_id === listId && !c.is_archived)
+            .sort((a, b) => (a.position || 0) - (b.position || 0))
+            .map((c) => {
+                const labelIds = inMemoryStore.card_labels.filter((cl) => cl.card_id === c.id).map((cl) => cl.label_id);
+                const labels = inMemoryStore.labels.filter((lbl) => labelIds.includes(lbl.id));
+                const comments = inMemoryStore.comments.filter((cmt) => cmt.card_id === c.id);
+                return { ...c, labels, comment_count: comments.length };
+            });
         return { rows: cards, rowCount: cards.length };
     }
 
@@ -300,11 +303,24 @@ function executeInMemoryQuery(text, params) {
         const cardId = parseInt(params[params.length - 1], 10);
         const card = inMemoryStore.cards.find((c) => c.id === cardId);
         if (card) {
-            if (lower.includes('list_id =') && params[0]) card.list_id = parseInt(params[0], 10);
-            if (lower.includes('position =') && params[1] !== undefined) card.position = parseInt(params[1], 10);
-            if (lower.includes('title =')) card.title = params[0];
-            if (lower.includes('is_archived =')) card.is_archived = params[0];
-            if (lower.includes('completed_at =')) card.completed_at = params[0];
+            const setClause = cleanText.substring(cleanText.indexOf('SET') + 3, cleanText.indexOf('WHERE'));
+            const assignments = setClause.split(',');
+            assignments.forEach((assignment) => {
+                const parts = assignment.trim().split('=');
+                if (parts.length === 2) {
+                    const field = parts[0].trim().toLowerCase();
+                    const valPlaceholder = parts[1].trim();
+                    if (valPlaceholder.startsWith('$')) {
+                        const paramIdx = parseInt(valPlaceholder.substring(1), 10) - 1;
+                        const val = params[paramIdx];
+                        if (field === 'list_id') card.list_id = parseInt(val, 10);
+                        if (field === 'position') card.position = parseInt(val, 10);
+                        if (field === 'title') card.title = val;
+                        if (field === 'is_archived') card.is_archived = val;
+                        if (field === 'completed_at') card.completed_at = val;
+                    }
+                }
+            });
         }
         return { rows: card ? [card] : [], rowCount: card ? 1 : 0 };
     }
