@@ -12,6 +12,7 @@ export const BoardPage = ({ boardId, onBack, onSetBoardTitle }) => {
 
     const [board, setBoard] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [errorMsg, setErrorMsg] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCard, setSelectedCard] = useState(null);
     const [isActivityOpen, setIsActivityOpen] = useState(false);
@@ -26,6 +27,7 @@ export const BoardPage = ({ boardId, onBack, onSetBoardTitle }) => {
     const fetchBoardDetails = useCallback(async () => {
         try {
             setLoading(true);
+            setErrorMsg(null);
             const res = await apiFetch(`/boards/${boardId}`);
             setBoard(res.data);
             if (onSetBoardTitle && res.data) {
@@ -33,6 +35,7 @@ export const BoardPage = ({ boardId, onBack, onSetBoardTitle }) => {
             }
         } catch (err) {
             console.error('Failed to load board:', err);
+            setErrorMsg(err.message || 'Failed to load board');
         } finally {
             setLoading(false);
         }
@@ -357,9 +360,14 @@ export const BoardPage = ({ boardId, onBack, onSetBoardTitle }) => {
                 </div>
             ) : !board ? (
                 <div style={{ textAlign: 'center', padding: '4rem' }}>
-                    <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--text-secondary)' }}>
+                    <h3 style={{ fontSize: '1.25rem', marginBottom: '0.75rem', color: 'var(--text-primary)', fontWeight: 600 }}>
                         Unable to load board workspace.
                     </h3>
+                    {errorMsg && (
+                        <div style={{ color: '#ef4444', marginBottom: '1.5rem', fontSize: '0.95rem', background: '#fef2f2', border: '1px solid #fca5a5', padding: '0.75rem 1rem', borderRadius: '8px', maxWidth: '500px', margin: '0 auto 1.5rem auto' }}>
+                            {errorMsg}
+                        </div>
+                    )}
                     <button className="btn btn-primary" onClick={onBack}>
                         ← Return to Dashboard
                     </button>
