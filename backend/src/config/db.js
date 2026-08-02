@@ -17,13 +17,34 @@ export const pool = new Pool({
 
 let isPostgresAvailable = null;
 
+import bcrypt from 'bcryptjs';
+
+const defaultPasswordHash = bcrypt.hashSync('Password123!', 10);
+
 // In-Memory Database Store Fallback when local PostgreSQL daemon is unavailable
 const inMemoryStore = {
-    users: [],
-    boards: [],
-    board_members: [],
-    lists: [],
-    cards: [],
+    users: [
+        { id: 1, username: 'alex_dev', email: 'demo@example.com', password_hash: defaultPasswordHash, created_at: new Date().toISOString() },
+        { id: 2, username: 'sarah_pm', email: 'sarah@example.com', password_hash: defaultPasswordHash, created_at: new Date().toISOString() },
+    ],
+    boards: [
+        { id: 1, title: 'Trello App Sprint', description: 'Main sprint board for collaborative task management', owner_id: 1, created_at: '2025-07-10T10:00:00Z', updated_at: '2025-07-10T10:00:00Z' },
+    ],
+    board_members: [
+        { id: 1, board_id: 1, user_id: 1, role: 'owner', created_at: new Date().toISOString() },
+        { id: 2, board_id: 1, user_id: 2, role: 'editor', created_at: new Date().toISOString() },
+    ],
+    lists: [
+        { id: 1, board_id: 1, title: 'To Do', position: 0, created_at: new Date().toISOString() },
+        { id: 2, board_id: 1, title: 'In Progress', position: 1, created_at: new Date().toISOString() },
+        { id: 3, board_id: 1, title: 'Review', position: 2, created_at: new Date().toISOString() },
+        { id: 4, board_id: 1, title: 'Done', position: 3, created_at: new Date().toISOString() },
+    ],
+    cards: [
+        { id: 1, list_id: 1, title: 'asdasdasdasda', description: 'asdasdasd', position: 0, due_date: null, completed_at: null, is_archived: false, created_at: new Date().toISOString() },
+        { id: 2, list_id: 1, title: 'Add styling to columns', description: 'No description.', position: 1, due_date: '2025-07-23T00:00:00Z', completed_at: null, is_archived: false, created_at: new Date().toISOString() },
+        { id: 3, list_id: 2, title: 'Fix bug with trello app', description: 'There is a bug where i cant sign in', position: 0, due_date: '2025-07-31T00:00:00Z', completed_at: null, is_archived: false, created_at: new Date().toISOString() },
+    ],
     comments: [],
     activity_logs: [],
     labels: [
@@ -35,11 +56,11 @@ const inMemoryStore = {
     ],
     card_labels: [],
     counters: {
-        users: 1,
-        boards: 1,
-        board_members: 1,
-        lists: 1,
-        cards: 1,
+        users: 3,
+        boards: 2,
+        board_members: 3,
+        lists: 5,
+        cards: 4,
         comments: 1,
         activity_logs: 1,
     },
