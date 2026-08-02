@@ -9,12 +9,19 @@ export const DashboardPage = ({ onSelectBoard }) => {
     const [isCreating, setIsCreating] = useState(false);
     const [newTitle, setNewTitle] = useState('');
     const [newDescription, setNewDescription] = useState('');
+    
+    // View and Filter State
+    const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+    const [searchTerm, setSearchTerm] = useState('');
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [filterRole, setFilterRole] = useState('all'); // 'all', 'owner', 'member'
+    const [sortBy, setSortBy] = useState('newest'); // 'newest', 'oldest', 'title'
 
     const fetchBoards = async () => {
         try {
             setLoading(true);
             const res = await apiFetch('/boards');
-            setBoards(res.data);
+            setBoards(res.data || []);
         } catch (err) {
             console.error('Failed to load boards:', err);
         } finally {
@@ -45,38 +52,199 @@ export const DashboardPage = ({ onSelectBoard }) => {
         }
     };
 
+    // Filter and Sort Boards
+    const filteredBoards = boards
+        .filter((board) => {
+            const matchesSearch =
+                !searchTerm.trim() ||
+                board.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (board.description && board.description.toLowerCase().includes(searchTerm.toLowerCase()));
+            
+            const matchesRole =
+                filterRole === 'all'
+                    ? true
+                    : filterRole === 'owner'
+                    ? board.role === 'owner'
+                    : board.role !== 'owner';
+
+            return matchesSearch && matchesRole;
+        })
+        .sort((a, b) => {
+            if (sortBy === 'newest') return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+            if (sortBy === 'oldest') return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+            if (sortBy === 'title') return a.title.localeCompare(b.title);
+            return 0;
+        });
+
     return (
         <div className="dashboard-container">
-            <div className="dashboard-header">
-                <div>
-                    <h1 style={{ fontSize: '1.75rem', fontWeight: 700 }}>Your Workspace Boards</h1>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                        Collaborate on real-time task management boards
-                    </p>
-                </div>
-
-                <button className="btn btn-primary" onClick={() => setIsCreating(true)}>
-                    + Create New Board
-                </button>
+            {/* Top Welcome Heading */}
+            <div className="dashboard-welcome">
+                <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Trello Clone</h1>
+                <p>Here's what's happening with your boards today.</p>
             </div>
 
-            {loading ? (
-                <div style={{ textAlign: 'center', padding: '3rem' }}>Loading boards...</div>
-            ) : boards.length === 0 ? (
-                <EmptyState
-                    title="No boards found"
-                    description="Create your first board to get started with lists and cards."
-                    actionText="+ Create Board"
-                    onAction={() => setIsCreating(true)}
-                />
-            ) : (
-                <div className="boards-grid">
-                    {boards.map((board) => (
-                        <BoardCard key={board.id} board={board} onClick={onSelectBoard} />
-                    ))}
+            {/* Stat Overview Cards Grid */}
+            <div className="stats-grid">
+                <div className="stat-card">
+                    <div className="stat-info">
+                        <span className="stat-label">Total Boards</span>
+                        <span className="stat-value">{boards.length}</span>
+                    </div>
+                    <div className="stat-icon-wrapper blue">📋</div>
+                </div>
+
+                <div className="stat-card">
+                    <div className="stat-info">
+                        <span className="stat-label">Active Projects</span>
+                        <span className="stat-value">{boards.length}</span>
+                    </div>
+                    <div className="stat-icon-wrapper green">🚀</div>
+                </div>
+
+                <div className="stat-card">
+                    <div className="stat-info">
+                        <span className="stat-label">Recent Activity</span>
+                        <span className="stat-value">2</span>
+                    </div>
+                    <div className="stat-icon-wrapper purple">📊</div>
+                </div>
+
+                <div className="stat-card">
+                    <div className="stat-info">
+                        <span className="stat-label">Total Workspace</span>
+                        <span className="stat-value">{boards.length}</span>
+                    </div>
+                    <div className="stat-icon-wrapper indigo">💼</div>
+                </div>
+            </div>
+
+            {/* Your Boards Section Header */}
+            <div className="section-header-bar">
+                <div className="section-title-group">
+                    <h2>Your Boards</h2>
+                    <p>Manage your projects and tasks</p>
+                </div>
+
+                <div className="dashboard-toolbar">
+                    {/* View Switcher Toggle */}
+                    <div className="view-toggle">
+                        <button
+                            className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                            onClick={() => setViewMode('grid')}
+                            title="Grid View"
+                        >
+                            ⸬
+                        </button>
+                        <button
+                            className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
+                            onClick={() => setViewMode('list')}
+                            title="List View"
+                        >
+                            ☰
+                        </button>
+                    </div>
+
+                    {/* Filter Button */}
+                    <button
+                        className={`btn ${isFilterOpen ? 'btn-primary' : 'btn-secondary'}`}
+                        onClick={() => setIsFilterOpen(!isFilterOpen)}
+                    >
+                        🔍 Filter
+                    </button>
+
+                    {/* Create Board Button */}
+                    <button className="btn btn-primary" onClick={() => setIsCreating(true)}>
+                        + Create Board
+                    </button>
+                </div>
+            </div>
+
+            {/* Interactive Filter Panel */}
+            {isFilterOpen && (
+                <div
+                    style={{
+                        backgroundColor: 'var(--bg-secondary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: 'var(--radius-md)',
+                        padding: '1rem 1.25rem',
+                        marginBottom: '1.25rem',
+                        display: 'flex',
+                        gap: '1.5rem',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                            Filter Role:
+                        </span>
+                        <select
+                            className="form-select"
+                            style={{ width: 'auto', padding: '0.35rem 0.75rem' }}
+                            value={filterRole}
+                            onChange={(e) => setFilterRole(e.target.value)}
+                        >
+                            <option value="all">All Boards</option>
+                            <option value="owner">Created by me</option>
+                            <option value="member">Shared with me</option>
+                        </select>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                            Sort By:
+                        </span>
+                        <select
+                            className="form-select"
+                            style={{ width: 'auto', padding: '0.35rem 0.75rem' }}
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                        >
+                            <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                            <option value="title">Title (A-Z)</option>
+                        </select>
+                    </div>
                 </div>
             )}
 
+            {/* Search Input Bar */}
+            <div className="search-bar-row">
+                <input
+                    type="text"
+                    className="search-input-field"
+                    placeholder="🔍 Search boards..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
+
+            {/* Boards Grid / List */}
+            {loading ? (
+                <div style={{ textAlign: 'center', padding: '3rem' }}>Loading boards...</div>
+            ) : filteredBoards.length === 0 && searchTerm ? (
+                <EmptyState
+                    title="No matching boards found"
+                    description={`No boards match your search query "${searchTerm}".`}
+                    actionText="Clear Search"
+                    onAction={() => setSearchTerm('')}
+                />
+            ) : (
+                <div className={viewMode === 'grid' ? 'boards-grid' : 'boards-list-view'}>
+                    {filteredBoards.map((board) => (
+                        <BoardCard key={board.id} board={board} onClick={onSelectBoard} />
+                    ))}
+
+                    {/* Interactive "+ Create new board" dashed card */}
+                    <div className="create-board-card" onClick={() => setIsCreating(true)}>
+                        <span className="create-icon-plus">+</span>
+                        <span>Create new board</span>
+                    </div>
+                </div>
+            )}
+
+            {/* Create Board Modal */}
             {isCreating && (
                 <div className="modal-overlay" onClick={() => setIsCreating(false)}>
                     <div className="modal-content" style={{ maxWidth: '450px' }} onClick={(e) => e.stopPropagation()}>
@@ -87,7 +255,7 @@ export const DashboardPage = ({ onSelectBoard }) => {
                                 <input
                                     type="text"
                                     className="form-input"
-                                    placeholder="e.g. Product Launch Backlog"
+                                    placeholder="e.g. Trello App Sprint"
                                     value={newTitle}
                                     onChange={(e) => setNewTitle(e.target.value)}
                                     required
@@ -119,3 +287,4 @@ export const DashboardPage = ({ onSelectBoard }) => {
         </div>
     );
 };
+

@@ -144,92 +144,49 @@ export const BoardPage = ({ boardId, onBack, onSetBoardTitle }) => {
     };
 
     const handleMoveCard = async (cardId, targetListId, newPosition) => {
+        // Optimistically update board state
+        setBoard((prevBoard) => {
+            if (!prevBoard) return prevBoard;
+
+            let movedCard = null;
+            const updatedLists = prevBoard.lists.map((list) => {
+                const remainingCards = list.cards.filter((c) => {
+                    if (c.id === cardId) {
+                        movedCard = { ...c, list_id: targetListId };
+                        return false;
+                    }
+                    return true;
+                });
+                return { ...list, cards: remainingCards };
+            });
+
+            if (!movedCard) return prevBoard;
+
+            const finalLists = updatedLists.map((list) => {
+                if (list.id === targetListId) {
+                    const newCards = [...list.cards];
+                    const pos = Math.min(Math.max(0, newPosition), newCards.length);
+                    newCards.splice(pos, 0, movedCard);
+                    return { ...list, cards: newCards };
+                }
+                return list;
+            });
+
+            return { ...prevBoard, lists: finalLists };
+        });
+
         try {
             const res = await apiFetch(`/cards/${cardId}/move`, {
                 method: 'PUT',
                 body: JSON.stringify({ targetListId, newPosition }),
             });
 
-            fetchBoardDetails();
-
             if (socket) {
                 socket.emit('card:move', { boardId, cardId, targetListId, newPosition, card: res.data });
             }
         } catch (err) {
-            alert(err.message || 'Failed to move card');
-        }
-    };
-
-    const handleUpdateCard = async (cardId, updates) => {
-        try {
-            const res = await apiFetch(`/cards/${cardId}`, {
-                method: 'PUT',
-                body: JSON.stringify(updates),
-            });
-
+            console.error('Failed to persist move:', err);
             fetchBoardDetails();
-
-            if (socket) {
-                socket.emit('card:update', { boardId, card: res.data });
-            }
-
-            if (selectedCard && selectedCard.id === cardId) {
-                setSelectedCard(res.data);
-            }
-        } catch (err) {
-            alert(err.message || 'Failed to update card');
-        }
-    };
-
-    const handleArchiveCard = async (cardId, shouldArchive) => {
-        try {
-            const endpoint = shouldArchive ? `/cards/${cardId}/archive` : `/cards/${cardId}/restore`;
-            const res = await apiFetch(endpoint, { method: 'PUT' });
-
-            fetchBoardDetails();
-
-            if (socket) {
-                socket.emit('card:update', { boardId, card: res.data });
-            }
-
-            if (selectedCard) setSelectedCard(null);
-        } catch (err) {
-            alert(err.message || 'Failed to update card archive status');
-        }
-    };
-
-    const handleDeleteCardPermanently = async (cardId) => {
-        if (!window.confirm('Permanently delete this card?')) return;
-        try {
-            await apiFetch(`/cards/${cardId}`, { method: 'DELETE' });
-
-            fetchBoardDetails();
-
-            if (socket) {
-                socket.emit('card:delete', { boardId, cardId });
-            }
-
-            if (selectedCard) setSelectedCard(null);
-        } catch (err) {
-            alert(err.message || 'Failed to delete card');
-        }
-    };
-
-    const handleAddMember = async (e) => {
-        e.preventDefault();
-        if (!memberEmail.trim()) return;
-
-        try {
-            await apiFetch(`/boards/${boardId}/members`, {
-                method: 'POST',
-                body: JSON.stringify({ email: memberEmail.trim(), role: memberRole }),
-            });
-            alert('Member added successfully!');
-            setMemberEmail('');
-            setIsAddMemberOpen(false);
-            fetchBoardDetails();
-        } catch (err) {
-            alert(err.message || 'Failed to add member');
         }
     };
 
@@ -241,22 +198,33 @@ export const BoardPage = ({ boardId, onBack, onSetBoardTitle }) => {
         return <div style={{ textAlign: 'center', padding: '3rem' }}>Loading board workspace...</div>;
     }
 
+    const totalTasks = board.lists.reduce((acc, list) => {
+        return acc + (list.cards ? list.cards.filter((c) => !c.is_archived).length : 0);
+    }, 0);
+
     return (
         <div className="board-page">
             <div className="board-bar">
                 <div className="board-title-group">
                     <button className="btn btn-secondary btn-sm" onClick={onBack}>
-                        ← Back to Boards
+                        ← Back to dashboard
                     </button>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{board.title}</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '1.2rem' }}>📋</span>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{board.title}</h2>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', cursor: 'pointer' }}>•••</span>
+                    </div>
+                    <span className="count-badge" style={{ fontSize: '0.82rem', padding: '0.25rem 0.65rem' }}>
+                        Total Tasks: {totalTasks}
+                    </span>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <input
                         type="text"
                         className="form-input"
-                        style={{ width: '200px', padding: '0.4rem 0.75rem' }}
-                        placeholder="🔍 Search cards..."
+                        style={{ width: '180px', padding: '0.4rem 0.75rem' }}
+                        placeholder="🔍 Search tasks..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -274,6 +242,21 @@ export const BoardPage = ({ boardId, onBack, onSetBoardTitle }) => {
 
                     <button className="btn btn-secondary btn-sm" onClick={() => setIsActivityOpen(true)}>
                         📜 Activity
+                    </button>
+
+                    <button
+                        className="btn btn-primary btn-sm"
+                        onClick={() => {
+                            if (board.lists.length > 0) {
+                                const firstList = board.lists[0];
+                                const taskTitle = prompt('Enter new task title for ' + firstList.title + ':');
+                                if (taskTitle && taskTitle.trim()) {
+                                    handleAddCard(firstList.id, taskTitle.trim());
+                                }
+                            }
+                        }}
+                    >
+                        + Add Task
                     </button>
                 </div>
             </div>

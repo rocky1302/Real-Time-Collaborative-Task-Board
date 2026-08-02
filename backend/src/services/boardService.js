@@ -9,10 +9,11 @@ export class BoardService {
     static async createBoard({ title, description, ownerId }) {
         const board = await BoardRepository.create({ title, description, ownerId });
         
-        // Seed default lists for new board: To Do, In Progress, Done
+        // Seed 4 default lists for new board: To Do, In Progress, In Review, Done
         await ListRepository.create({ boardId: board.id, title: 'To Do', position: 0 });
         await ListRepository.create({ boardId: board.id, title: 'In Progress', position: 1 });
-        await ListRepository.create({ boardId: board.id, title: 'Done', position: 2 });
+        await ListRepository.create({ boardId: board.id, title: 'In Review', position: 2 });
+        await ListRepository.create({ boardId: board.id, title: 'Done', position: 3 });
 
         await ActivityLogRepository.log({
             boardId: board.id,

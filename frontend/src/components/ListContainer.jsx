@@ -3,7 +3,7 @@ import { CardItem } from './CardItem.jsx';
 
 export const ListContainer = ({
     list,
-    cards,
+    cards = [],
     onCardClick,
     onAddCard,
     onMoveCard,
@@ -25,6 +25,7 @@ export const ListContainer = ({
 
     const handleDragOver = (e) => {
         e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
         setIsDragOver(true);
     };
 
@@ -32,24 +33,35 @@ export const ListContainer = ({
         setIsDragOver(false);
     };
 
-    const handleDrop = (e) => {
+    const handleDrop = (e, targetIndex = null) => {
         e.preventDefault();
+        e.stopPropagation();
         setIsDragOver(false);
+
         const cardData = e.dataTransfer.getData('application/json');
-        if (cardData) {
+        if (!cardData) return;
+
+        try {
             const card = JSON.parse(cardData);
-            if (card.list_id !== list.id) {
-                onMoveCard(card.id, list.id, cards.length);
-            }
+            const newPos = targetIndex !== null ? targetIndex : cards.length;
+            onMoveCard(card.id, list.id, newPos);
+        } catch (err) {
+            console.error('Failed to parse dropped card data:', err);
         }
     };
 
     return (
         <div className="kanban-list">
             <div className="list-header">
-                <span>{list.title}</span>
-                <div style={{ display: 'flex', gap: '0.25rem' }}>
-                    <button className="btn btn-secondary btn-sm" onClick={() => onDeleteList(list.id)}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <span>{list.title}</span>
+                    <span className="count-badge">{cards ? cards.length : 0}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                    <button className="btn btn-secondary btn-sm" style={{ padding: '0.15rem 0.4rem', border: 'none' }} title="Options">
+                        •••
+                    </button>
+                    <button className="btn btn-secondary btn-sm" style={{ padding: '0.15rem 0.4rem', border: 'none' }} onClick={() => onDeleteList(list.id)} title="Delete List">
                         🗑️
                     </button>
                 </div>
@@ -59,14 +71,17 @@ export const ListContainer = ({
                 className={`list-cards ${isDragOver ? 'drag-over' : ''}`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
+                onDrop={(e) => handleDrop(e, null)}
             >
-                {cards && cards.map((card) => (
+                {cards && cards.map((card, index) => (
                     <CardItem
                         key={card.id}
                         card={card}
+                        index={index}
                         onClick={onCardClick}
                         onDragStart={onDragStartCard}
+                        onDragOverCard={(e) => e.preventDefault()}
+                        onDropOnCard={(e, idx) => handleDrop(e, idx)}
                     />
                 ))}
 
@@ -75,14 +90,14 @@ export const ListContainer = ({
                         <input
                             type="text"
                             className="form-input"
-                            placeholder="Enter card title..."
+                            placeholder="Enter task title..."
                             value={newCardTitle}
                             onChange={(e) => setNewCardTitle(e.target.value)}
                             autoFocus
                         />
                         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                             <button type="submit" className="btn btn-primary btn-sm">
-                                Add Card
+                                Add Task
                             </button>
                             <button
                                 type="button"
@@ -96,13 +111,14 @@ export const ListContainer = ({
                 ) : (
                     <button
                         className="btn btn-secondary btn-sm"
-                        style={{ width: '100%', marginTop: '0.5rem', justifyContent: 'flex-start' }}
+                        style={{ width: '100%', marginTop: '0.5rem', justifyContent: 'center', backgroundColor: 'transparent', border: 'none', color: 'var(--text-secondary)' }}
                         onClick={() => setIsAddingCard(true)}
                     >
-                        + Add a card
+                        + Add Task
                     </button>
                 )}
             </div>
         </div>
     );
 };
+
