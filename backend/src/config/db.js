@@ -347,6 +347,12 @@ function executeInMemoryQuery(text, params) {
     }
 
     // 6. Comments & Labels Queries
+    if (lower.includes('count(*)') && lower.includes('from comments')) {
+        const cardId = parseInt(params[0], 10);
+        const count = inMemoryStore.comments.filter((c) => c.card_id === cardId).length;
+        return { rows: [{ count }], rowCount: 1 };
+    }
+
     if (lower.startsWith('insert into comments')) {
         const id = inMemoryStore.counters.comments++;
         const comment = {
@@ -357,16 +363,45 @@ function executeInMemoryQuery(text, params) {
             created_at: new Date().toISOString(),
         };
         inMemoryStore.comments.push(comment);
-        return { rows: [comment], rowCount: 1 };
+        const u = inMemoryStore.users.find((user) => user.id === comment.user_id);
+        return { rows: [{ ...comment, username: u ? u.username : 'User', email: u ? u.email : '' }], rowCount: 1 };
     }
 
-    if (lower.includes('from comments') && lower.includes('where c.card_id =')) {
+    if (lower.includes('from comments')) {
         const cardId = parseInt(params[0], 10);
         const comments = inMemoryStore.comments.filter((c) => c.card_id === cardId).map((c) => {
             const u = inMemoryStore.users.find((user) => user.id === c.user_id);
             return { ...c, username: u ? u.username : 'User', email: u ? u.email : '' };
         });
         return { rows: comments, rowCount: comments.length };
+    }
+
+    if (lower.startsWith('delete from card_labels')) {
+        const cardId = parseInt(params[0], 10);
+        if (params.length > 1) {
+            const labelId = parseInt(params[1], 10);
+            inMemoryStore.card_labels = inMemoryStore.card_labels.filter((cl) => !(cl.card_id === cardId && cl.label_id === labelId));
+        } else {
+            inMemoryStore.card_labels = inMemoryStore.card_labels.filter((cl) => cl.card_id !== cardId);
+        }
+        return { rows: [], rowCount: 1 };
+    }
+
+    if (lower.startsWith('insert into card_labels')) {
+        const cardId = parseInt(params[0], 10);
+        const labelId = parseInt(params[1], 10);
+        const exists = inMemoryStore.card_labels.some((cl) => cl.card_id === cardId && cl.label_id === labelId);
+        if (!exists) {
+            inMemoryStore.card_labels.push({ card_id: cardId, label_id: labelId });
+        }
+        return { rows: [], rowCount: 1 };
+    }
+
+    if (lower.includes('from labels l join card_labels cl')) {
+        const cardId = parseInt(params[0], 10);
+        const labelIds = inMemoryStore.card_labels.filter((cl) => cl.card_id === cardId).map((cl) => cl.label_id);
+        const cardLabels = inMemoryStore.labels.filter((l) => labelIds.includes(l.id));
+        return { rows: cardLabels, rowCount: cardLabels.length };
     }
 
     if (lower.includes('from labels')) {

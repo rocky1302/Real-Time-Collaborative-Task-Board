@@ -22,7 +22,7 @@ export class CommentRepository {
 
         const countSql = 'SELECT COUNT(*) FROM comments WHERE card_id = $1';
         const countRes = await query(countSql, [cardId]);
-        const total = parseInt(countRes.rows[0].count, 10);
+        const total = parseInt(countRes.rows[0]?.count || 0, 10);
 
         const sql = `
             SELECT c.id, c.card_id, c.user_id, c.content, c.created_at, c.updated_at,
