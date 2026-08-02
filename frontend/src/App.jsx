@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useAuth } from './hooks/useAuth.js';
 import { Header } from './components/Header.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
@@ -11,6 +11,21 @@ export const App = () => {
     const [view, setView] = useState('login'); // 'login', 'register', 'dashboard', 'board'
     const [selectedBoardId, setSelectedBoardId] = useState(null);
     const [boardTitle, setBoardTitle] = useState('');
+
+    const handleSelectBoard = useCallback((boardId) => {
+        setSelectedBoardId(boardId);
+        setView('board');
+    }, []);
+
+    const handleBackToDashboard = useCallback(() => {
+        setSelectedBoardId(null);
+        setBoardTitle('');
+        setView('dashboard');
+    }, []);
+
+    const handleSetBoardTitle = useCallback((title) => {
+        setBoardTitle(title);
+    }, []);
 
     if (loading) {
         return (
@@ -34,17 +49,6 @@ export const App = () => {
         );
     }
 
-    const handleSelectBoard = (boardId) => {
-        setSelectedBoardId(boardId);
-        setView('board');
-    };
-
-    const handleBackToDashboard = () => {
-        setSelectedBoardId(null);
-        setBoardTitle('');
-        setView('dashboard');
-    };
-
     return (
         <div className="app-container">
             <Header
@@ -56,7 +60,7 @@ export const App = () => {
                     <BoardPage
                         boardId={selectedBoardId}
                         onBack={handleBackToDashboard}
-                        onSetBoardTitle={setBoardTitle}
+                        onSetBoardTitle={handleSetBoardTitle}
                     />
                 ) : (
                     <DashboardPage onSelectBoard={handleSelectBoard} />

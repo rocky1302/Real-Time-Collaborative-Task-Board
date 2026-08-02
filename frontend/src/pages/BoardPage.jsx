@@ -28,18 +28,19 @@ export const BoardPage = ({ boardId, onBack, onSetBoardTitle }) => {
             setLoading(true);
             const res = await apiFetch(`/boards/${boardId}`);
             setBoard(res.data);
-            if (onSetBoardTitle) onSetBoardTitle(res.data.title);
+            if (onSetBoardTitle && res.data) {
+                onSetBoardTitle(res.data.title);
+            }
         } catch (err) {
             console.error('Failed to load board:', err);
-            onBack();
         } finally {
             setLoading(false);
         }
-    }, [boardId, onBack, onSetBoardTitle]);
+    }, [boardId]);
 
     useEffect(() => {
         fetchBoardDetails();
-    }, [fetchBoardDetails]);
+    }, [boardId]);
 
     // Socket.io Real-Time Synchronization
     useEffect(() => {
@@ -48,35 +49,27 @@ export const BoardPage = ({ boardId, onBack, onSetBoardTitle }) => {
         // Join board room
         socket.emit('board:join', { boardId, user });
 
-        socket.on('card:created', (newCard) => {
-            fetchBoardDetails();
-        });
+        const handleSocketReload = () => {
+            apiFetch(`/boards/${boardId}`)
+                .then((res) => setBoard(res.data))
+                .catch((err) => console.error(err));
+        };
 
-        socket.on('card:moved', () => {
-            fetchBoardDetails();
-        });
-
-        socket.on('card:updated', () => {
-            fetchBoardDetails();
-        });
-
-        socket.on('card:deleted', () => {
-            fetchBoardDetails();
-        });
-
-        socket.on('list:updated', () => {
-            fetchBoardDetails();
-        });
+        socket.on('card:created', handleSocketReload);
+        socket.on('card:moved', handleSocketReload);
+        socket.on('card:updated', handleSocketReload);
+        socket.on('card:deleted', handleSocketReload);
+        socket.on('list:updated', handleSocketReload);
 
         return () => {
             socket.emit('board:leave', { boardId });
-            socket.off('card:created');
-            socket.off('card:moved');
-            socket.off('card:updated');
-            socket.off('card:deleted');
-            socket.off('list:updated');
+            socket.off('card:created', handleSocketReload);
+            socket.off('card:moved', handleSocketReload);
+            socket.off('card:updated', handleSocketReload);
+            socket.off('card:deleted', handleSocketReload);
+            socket.off('list:updated', handleSocketReload);
         };
-    }, [socket, boardId, user, fetchBoardDetails]);
+    }, [socket, boardId, user]);
 
     const handleAddList = async (e) => {
         e.preventDefault();
